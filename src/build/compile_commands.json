@@ -1,0 +1,17 @@
+[
+{
+  "directory": "/Users/weevil/RDH-implement/src/build",
+  "command": "/usr/bin/clang    -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk -o CMakeFiles/rdh.dir/main.c.o -c /Users/weevil/RDH-implement/src/main.c",
+  "file": "/Users/weevil/RDH-implement/src/main.c"
+},
+{
+  "directory": "/Users/weevil/RDH-implement/src/build",
+  "command": "/usr/bin/clang    -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk -o CMakeFiles/rdh.dir/rdh.c.o -c /Users/weevil/RDH-implement/src/rdh.c",
+  "file": "/Users/weevil/RDH-implement/src/rdh.c"
+},
+{
+  "directory": "/Users/weevil/RDH-implement/src/build",
+  "command": "/usr/bin/clang    -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk -o CMakeFiles/rdh.dir/histogram_shifting.c.o -c /Users/weevil/RDH-implement/src/histogram_shifting.c",
+  "file": "/Users/weevil/RDH-implement/src/histogram_shifting.c"
+}
+]
