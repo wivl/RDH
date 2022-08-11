@@ -7,33 +7,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "lodepng.h"
+
 #define PNG_SIG_CAP 8
 const uint8_t PNG_SIG[PNG_SIG_CAP] = {137, 80, 78, 71, 13, 10, 26, 10};
 
-void read_bytes(FILE *file, void *buf, size_t buf_cap) {
-	size_t n = fread(buf, buf_cap, 1, file);
-	if (n != 1) {
-		if (ferror(file)) {
-			fprintf(stderr, "ERROR: conld not read %zu bytes from file: %s\n",
-					buf_cap, strerror(errno));
-			exit(1);
-		} else if (feof(file)) {
-			fprintf(stderr, "ERROR: could not read %zu bytes from file: reached the end of file",
-					buf_cap);
-			exit(1);
-		} else {
-			assert(0 && "unreachable");
-		}
-	}
+#define BIT_DEPTH 8
 
-}
-
-void print_buffer(uint8_t *buf, size_t buf_cap) {
-	for (size_t i = 0; i < buf_cap; i++) {
-		printf("%u ", buf[i]);
-	}
-	printf("\n");
-}
+const LodePNGColorType LCT = LCT_GREY;
 
 void reverse_bytes(void *buf_void, size_t buf_cap) {
 	uint8_t *buf = buf_void;
@@ -41,6 +22,48 @@ void reverse_bytes(void *buf_void, size_t buf_cap) {
 		uint8_t t = buf[buf_cap - i - 1];
 		buf[buf_cap - i - 1] = buf[i];
 		buf[i] = t;
+	}
+}
+
+void print_bytes(const char *image, unsigned width, unsigned height) {
+	for (unsigned i = 0; i < height; i++) {
+		for (unsigned j = 0; j < width; j++) {
+			printf("%u ", image[i*width+j]);
+		}
+		puts("");
+	}
+}
+
+void load_png(const char* filename, unsigned char** png, size_t* pngsize) {
+	unsigned error;
+
+	error = lodepng_load_file(png, pngsize, filename);
+	if (error) {
+		fprintf(stderr, "ERROR: %u: %s\n", error, lodepng_error_text(error));
+		exit(1);
+	} 
+
+}
+
+void decode_png(unsigned char** image, unsigned *width, unsigned *height,
+		unsigned char* png, unsigned pngsize) {
+
+	unsigned error;
+	error = lodepng_decode_memory(image, width, height, png, pngsize, LCT, BIT_DEPTH);
+	if (error) {
+		fprintf(stderr, "ERROR: %u: %s\n", error, lodepng_error_text(error));
+		exit(1);
+	}
+}
+
+void encode_and_save(const char *filename, const unsigned char *image,
+		unsigned width, unsigned height) {
+
+	unsigned error = lodepng_encode_file(filename, image, width, height, LCT, BIT_DEPTH);
+	if (error) {
+		fprintf(stderr, "ERROR: %u: %s\n", error,
+				lodepng_error_text(error));
+		exit(1);
 	}
 }
 
@@ -58,56 +81,20 @@ int main(int argc, char **argv) {
 	char *input_filepath = *argv++;
 	printf("Inspected file is %s\n", input_filepath);
 
-	FILE *input_file = fopen(input_filepath, "rb");
-	if (input_file == NULL) {
-		fprintf(stderr, "ERROR: could not open file %s: %s", 
-				input_filepath, strerror(errno));
-		exit(1);
-	}
+	unsigned char* raw_png = 0;
+	size_t pngsize;
+	load_png(input_filepath, &raw_png, &pngsize);
 
-	uint8_t sig[PNG_SIG_CAP];
-	read_bytes(input_file, sig, PNG_SIG_CAP);
-	printf("Signature: ");
-	print_buffer(sig, PNG_SIG_CAP);
-	if (memcmp(sig, PNG_SIG, PNG_SIG_CAP) != 0) {
-		fprintf(stderr, "ERROR: %s does not appear to be a valid PNG file\n", input_filepath);
-		exit(1);
-	}
+	unsigned char* image = 0;
+	unsigned width, height;
+	decode_png(&image, &width, &height, raw_png, pngsize);
 
+	memset(image, 255, width*height);
 
-	/* chunks */
-	bool quit = false;
-	while (!quit) {
-		uint32_t chunk_sz;	// 4 bytes: data field size
-		read_bytes(input_file, &chunk_sz, sizeof chunk_sz);
-		reverse_bytes(&chunk_sz, sizeof chunk_sz);
+	encode_and_save("output.png", image, width, height);
 
-		uint8_t chunk_type[4];
-		read_bytes(input_file, chunk_type, sizeof chunk_type);
+	free(raw_png);
+	free(image);
 
-		if (*(uint32_t*)chunk_type == 0x444E4549) {
-			quit = true;
-		}
-
-		/* skip chunk data */
-		if (fseek(input_file, chunk_sz, SEEK_CUR) < 0) {
-			fprintf(stderr, "ERROR: could not skip a chunk\n");
-			exit(1);
-		}
-
-		uint32_t chunk_crc;
-		read_bytes(input_file, &chunk_crc, sizeof chunk_crc);
-
-		/* print chunk info */
-		printf("Chunk Size: %u\n", chunk_sz);
-		printf("Chunk Type: %.*s (0x%08X)\n",
-				(int)sizeof chunk_type,
-				chunk_type,
-				*(uint32_t*) chunk_type);
-		printf("Chunk CRC : 0x%08X\n\n", chunk_crc);
-	}
-	/* chunks end */
-
-	fclose(input_file);
 	return 0;
 }
