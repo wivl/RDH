@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
 	unsigned width, height;
 	decode_png(&image, &width, &height, raw_png, pngsize);
 
-	memset(image, 255, width*height);
+	memset(image, 255, width);
 
 	encode_and_save("output.png", image, width, height);
 
