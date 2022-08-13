@@ -3,20 +3,13 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
-#include <errno.h>
 #include <stdint.h>
-#include <stdbool.h>
 
-#include "lodepng.h"
 
 #include "histogram_shifting.h"
+#include "png.h"
+#include "rdh.h"
 
-#define PNG_SIG_CAP 8
-const uint8_t PNG_SIG[PNG_SIG_CAP] = {137, 80, 78, 71, 13, 10, 26, 10};
-
-#define BIT_DEPTH 8
-
-const LodePNGColorType LCT = LCT_GREY;
 
 void reverse_bytes(void *buf_void, size_t buf_cap) {
 	uint8_t *buf = buf_void;
@@ -36,38 +29,6 @@ void print_bytes(const char *image, unsigned width, unsigned height) {
 	}
 }
 
-void load_png(const char* filename, unsigned char** png, size_t* pngsize) {
-	unsigned error;
-
-	error = lodepng_load_file(png, pngsize, filename);
-	if (error) {
-		fprintf(stderr, "ERROR: %u: %s\n", error, lodepng_error_text(error));
-		exit(1);
-	} 
-
-}
-
-void decode_png(unsigned char** image, unsigned *width, unsigned *height,
-		unsigned char* png, unsigned pngsize) {
-
-	unsigned error;
-	error = lodepng_decode_memory(image, width, height, png, pngsize, LCT, BIT_DEPTH);
-	if (error) {
-		fprintf(stderr, "ERROR: %u: %s\n", error, lodepng_error_text(error));
-		exit(1);
-	}
-}
-
-void encode_and_save(const char *filename, const unsigned char *image,
-		unsigned width, unsigned height) {
-
-	unsigned error = lodepng_encode_file(filename, image, width, height, LCT, BIT_DEPTH);
-	if (error) {
-		fprintf(stderr, "ERROR: %u: %s\n", error,
-				lodepng_error_text(error));
-		exit(1);
-	}
-}
 
 int main(int argc, char **argv) {
 	assert(*argv != NULL);
@@ -95,42 +56,53 @@ int main(int argc, char **argv) {
 
 	/* process image */
 	
-	long p, z; 
-	unsigned *counts;
+	unsigned char *keyimage = 0;
 
-	get_histogram(image, width, height, &p, &z, &counts);
+	generate_key_image(width, height);
+	get_key_image("key.png", &keyimage, &width, &height);
+	stream_encrypt(keyimage, image, width*height);
+
+	encode_and_save("encrypted.png", image, width, height);
+
+	stream_encrypt(keyimage, image, width*height);
+
+	encode_and_save("decrypted.png", image, width, height);
+//	 long p, z;
+//	 unsigned *counts;
+//
+//	 get_histogram(image, width, height, &p, &z, &counts);
+//
+//	 for (int i = 0; i < 256; i++) {
+//	 	printf("%u ", counts[i]);
+//	 }
+//	 puts("");
+//
+//	printf("p: %ld (%u)\n", p, counts[p]);
+//	printf("z: %ld (%u)\n", z, counts[z]);
+//
+//	shift(image, width, height, p, z);
+//
+//	char *message_file = "message.txt";
+//
+//	size_t cap;
+//
+//	hide_message(message_file, image, width, height, p, z, counts, &cap);
+//
+//
+//	encode_and_save("output.png", image, width, height);
+//
+//	get_message(image, width, height, p, z, "output.txt", cap);
+//
+//	encode_and_save("recover.png", image, width, height);
+//
+//	if(memcmp(image, image_backup, width*height) == 0) {
+//		printf("Success!\n");
+//	} else {
+//		fprintf(stderr, "ERROR: the process has problems\n");
+//	}
+
 	
-	for (int i = 0; i < 256; i++) {
-		printf("%u ", counts[i]);
-	}
-	puts("");
-
-	printf("p: %ld (%u)\n", p, counts[p]);
-	printf("z: %ld (%u)\n", z, counts[z]);
-
-	shift(image, width, height, p, z);
-
-	char *message_file = "message.txt";
-
-	size_t cap;
-
-	hide_message(message_file, image, width, height, p, z, counts, &cap);
-
 	/* process image end */
-
-	encode_and_save("output.png", image, width, height);
-
-	get_message(image, width, height, p, z, "output.txt", cap);
-
-	encode_and_save("recover.png", image, width, height);
-
-	if(memcmp(image, image_backup, width*height) == 0) {
-		printf("Success!\n");
-	} else {
-		fprintf(stderr, "ERROR: the process has problems\n");
-	}
-
-	
 
 	free(raw_png);
 	free(image);
