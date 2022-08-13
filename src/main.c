@@ -87,9 +87,11 @@ int main(int argc, char **argv) {
 	size_t pngsize;
 	load_png(input_filepath, &raw_png, &pngsize);
 
-	unsigned char* image = 0;
+	unsigned char* image = 0, *image_backup = 0;
 	unsigned width, height;
 	decode_png(&image, &width, &height, raw_png, pngsize);
+	decode_png(&image_backup, &width, &height, raw_png, pngsize);
+
 
 	/* process image */
 	
@@ -120,8 +122,19 @@ int main(int argc, char **argv) {
 
 	get_message(image, width, height, p, z, "output.txt", cap);
 
+	encode_and_save("recover.png", image, width, height);
+
+	if(memcmp(image, image_backup, width*height) == 0) {
+		printf("Success!\n");
+	} else {
+		fprintf(stderr, "ERROR: the process has problems\n");
+	}
+
+	
+
 	free(raw_png);
 	free(image);
+
 
 	return 0;
 }

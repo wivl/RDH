@@ -95,7 +95,7 @@ void hide_message(const char *filepath, unsigned char *image,
 	fclose(message);
 }
 
-void get_message(const unsigned char *image, const unsigned width, const unsigned height,
+void get_message(unsigned char *image, const unsigned width, const unsigned height,
 		const long p, const long z, char *filename, int byte_cap) {
 
 	assert(z != p);
@@ -130,7 +130,7 @@ void get_message(const unsigned char *image, const unsigned width, const unsigne
 				bit_count = 0;
 				quit = true;
 			}
-			if (buf_ptr >= MESS_BUF_CAP) {
+			if (buf_ptr >= MESS_BUF_CAP) {	// flush and clean the buffer
 				fwrite(message_buff, 1, sizeof message_buff, output);
 				buf_ptr = 0;
 				memset(message_buff, 0, sizeof message_buff);
@@ -139,6 +139,21 @@ void get_message(const unsigned char *image, const unsigned width, const unsigne
 		}
 	}
 	fwrite(message_buff, 1, buf_ptr, output);
+
+	/* recover the image */
+	if (z > p) {
+		for (int i = 0; i < width * height; i++) {
+			if (image[i] > p && image[i] <= z) {
+				image[i] -= 1;
+			}
+		}
+	} else {
+		for (int i = 0; i < width * height; i++) {
+			if (image[i] >= z && image[i] < p) {
+				image[i] += 1;
+			}
+		}
+	}
 
 	fclose(output);
 }
