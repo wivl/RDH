@@ -9,6 +9,8 @@
 
 #include "lodepng.h"
 
+#include "histogram_shifting.h"
+
 #define PNG_SIG_CAP 8
 const uint8_t PNG_SIG[PNG_SIG_CAP] = {137, 80, 78, 71, 13, 10, 26, 10};
 
@@ -89,9 +91,34 @@ int main(int argc, char **argv) {
 	unsigned width, height;
 	decode_png(&image, &width, &height, raw_png, pngsize);
 
-	memset(image, 255, width);
+	/* process image */
+	
+	long p, z; 
+	unsigned *counts;
+
+	get_histogram(image, width, height, &p, &z, &counts);
+	
+	for (int i = 0; i < 256; i++) {
+		printf("%u ", counts[i]);
+	}
+	puts("");
+
+	printf("p: %ld (%u)\n", p, counts[p]);
+	printf("z: %ld (%u)\n", z, counts[z]);
+
+	shift(image, width, height, p, z);
+
+	char *message_file = "message.txt";
+
+	size_t cap;
+
+	hide_message(message_file, image, width, height, p, z, counts, &cap);
+
+	/* process image end */
 
 	encode_and_save("output.png", image, width, height);
+
+	get_message(image, width, height, p, z, "output.txt", cap);
 
 	free(raw_png);
 	free(image);

@@ -3,6 +3,7 @@
 
 /src/build
 
+/src/cmake-build-debug
 
 # Prerequisites
 *.d
