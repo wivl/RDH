@@ -77,12 +77,13 @@ void watermark(unsigned char *image, unsigned width, unsigned height,
                     ptr = 0;
                 }
             }
-			printf("%c\n", message_buffer[ptr]);
+			printf("%X\n", message_buffer[ptr]);
 			unsigned char mode = (message_buffer[ptr] & byte) == byte ? 1 : 0;
 			mode <<= 1;
 			byte >>= 1;
 			mode += (message_buffer[ptr] & byte) == byte ? 1 : 0;
-			if (byte == 0x01) {
+			byte >>= 1;
+			if (byte == 0x00) {
 				byte = 0x80;
                 if (++ptr == MES_BUF_CAP) {
                     empty = true;
@@ -108,6 +109,7 @@ void watermark(unsigned char *image, unsigned width, unsigned height,
 				default:
 					assert(0 && "unreachable");
 			}
+			printf("start: (%d, %d), end: (%d, %d)\n", starti, startj, endi, endj);
 			unsigned char mask = 0x18;
 			for (int i = starti; i < endi; i++) {		// for every chunk, height
 				for (int j = startj; j < endj; j++) {	// for every chunk, width
