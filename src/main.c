@@ -54,18 +54,22 @@ int main(int argc, char **argv) {
 
 
 	/* process image */
+    /* test stream encryption */
 	
-	unsigned char *keyimage = 0;
+//	unsigned char *keyimage = 0;
 
-	generate_key_image(width, height);
-	get_key_image("key.png", &keyimage, &width, &height);
-	stream_encrypt(keyimage, image, width*height);
+//	generate_key_image(width, height);
+//	get_key_image("key.png", &keyimage, &width, &height);
+//	stream_encrypt(keyimage, image, width*height);
+//
+//	encode_and_save("encrypted.png", image, width, height);
+//
+//	stream_encrypt(keyimage, image, width*height);
+//
+//	encode_and_save("decrypted.png", image, width, height);
 
-	encode_and_save("encrypted.png", image, width, height);
+    /* test histogram shifting */
 
-	stream_encrypt(keyimage, image, width*height);
-
-	encode_and_save("decrypted.png", image, width, height);
 //	 long p, z;
 //	 unsigned *counts;
 //
@@ -100,7 +104,9 @@ int main(int argc, char **argv) {
 //		fprintf(stderr, "ERROR: the process has problems\n");
 //	}
 
-	
+	/* test watermark */
+	watermark(image, width, height, "watermark.txt");
+	encode_and_save("watermarked.png", image, width, height);
 	/* process image end */
 
 	free(raw_png);
