@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include "rdh.h"
 #include "png.h"
+#include "histogram_shifting.h"
 
 /*
    Generate key png file that stream encrypt process needed.
@@ -91,13 +92,12 @@ void watermark(unsigned char *image, unsigned width, unsigned height,
 				default:
 					assert(0 && "unreachable");
 			}
-			
 
 			mode = (message_byte & byte) == byte ? 1 : 0;
 			byte >>= 1;
 			mode <<= 1;
 			mode += (message_byte & byte) == byte ? 1 : 0;
-			printf("mode: %d\n", mode);
+			// printf("mode: %d\n", mode);
 
 			switch (mode) {
 				case 0:
@@ -119,7 +119,7 @@ void watermark(unsigned char *image, unsigned width, unsigned height,
 				default:
 					assert(0 && "unreachable");
 			}
-			printf("start: (%d, %d), end: (%d, %d)\n", starti, startj, endi, endj);
+			// printf("start: (%d, %d), end: (%d, %d)\n", starti, startj, endi, endj);
 			unsigned char mask = 0x18;
 			for (int i = starti; i < endi; i++) {		// for every chunk, height
 				for (int j = startj; j < endj; j++) {	// for every chunk, width
@@ -133,14 +133,33 @@ void watermark(unsigned char *image, unsigned width, unsigned height,
 					goto OUT;
 				}
 				chunk_count = 0;
-
 			}
-
-
 		}
 	}
-OUT: {
-
-	 }
-
+OUT: {}
 }
+
+
+void watermark_process(unsigned char *image, const unsigned char *key,
+		unsigned width, unsigned height, char *watermarkfile,
+		char *messagefile) {
+
+	unsigned *counts;
+	long p, z;
+
+	stream_encrypt(key, image, width*height);
+	watermark(image, width, height, watermarkfile);
+	int starti[4] = {0, 0, height/2, height/2};
+	int endi[4] = {height/2, height/2, height, height};
+	int startj[4] = {0, width/2, 0, width/2};
+	int endj[4] = {width/2, width, width/2, width};
+	size_t cap;
+	/* chunk 0 */
+	for (int i = 0; i < 4; i++) {
+		get_histogram(image, width, height, starti[i], endi[i], startj[i], endj[i], &p, &z, &counts);
+		shift(image, width, height, starti[i], endi[i], startj[i], endj[i], p, z);
+		hide_message(messagefile, image, width, height, starti[i], endi[i], startj[i], endj[i], p, z, counts, &cap);
+
+	}
+}
+

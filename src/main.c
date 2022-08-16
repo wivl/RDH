@@ -56,10 +56,10 @@ int main(int argc, char **argv) {
 	/* process image */
     /* test stream encryption */
 	
-//	unsigned char *keyimage = 0;
+	unsigned char *keyimage = 0;
 
 //	generate_key_image(width, height);
-//	get_key_image("key.png", &keyimage, &width, &height);
+	get_key_image("key.png", &keyimage, &width, &height);
 //	stream_encrypt(keyimage, image, width*height);
 //
 //	encode_and_save("encrypted.png", image, width, height);
@@ -104,10 +104,15 @@ int main(int argc, char **argv) {
 //		fprintf(stderr, "ERROR: the process has problems\n");
 //	}
 
-	/* test watermark */
-	watermark(image, width, height, "watermark.txt");
-	encode_and_save("watermarked.png", image, width, height);
+//	/* test watermark */
+//	watermark(image, width, height, "watermark.txt");
+//	encode_and_save("watermarked.png", image, width, height);
+	watermark_process(image, keyimage, width, height, "watermark.txt", "message.txt");
+	encode_and_save("demo.png", image, width, height);
+	stream_encrypt(keyimage, image, width*height);
+	encode_and_save("demo1.png", image, width, height);
 	/* process image end */
+
 
 	free(raw_png);
 	free(image);

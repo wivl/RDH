@@ -12,4 +12,8 @@ void stream_encrypt(const unsigned char *key, unsigned char *image, const long b
 
 void watermark(unsigned char *image, unsigned width, unsigned height,
 		char *filename);
+
+void watermark_process(unsigned char *image, const unsigned char *key,
+		unsigned width, unsigned height, char *watermarkfile,
+		char *messagefile);
 #endif
