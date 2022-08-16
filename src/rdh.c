@@ -48,47 +48,57 @@ void stream_encrypt(const unsigned char *key, unsigned char *image, const long b
 	}
 }
 
-#define MES_BUF_CAP 256
-unsigned char message_buffer[MES_BUF_CAP];
 
 void watermark(unsigned char *image, unsigned width, unsigned height,
 		char *filename) {
 
-	assert(width % L == 0 && height % L == 0);
+	assert(width == height && width % L == 0 && height % L == 0);
 
 	FILE *message = fopen(filename, "rb");
-	memset(message_buffer, 0, MES_BUF_CAP);
+
+	unsigned char message_byte;
+	int n = fread(&message_byte, 1, 1, message);
+	if (n != 1) {
+		fprintf(stderr, "ERROR: the file %s contains no message\n", filename);
+		exit(1);
+	}
 
 	unsigned char byte = 0x80;
 	int ptr = 0;
 	int bitcount = 0;
 	bool quit = false;
 	bool empty = true;
-	int n;
 	int starti, startj, endi, endj;
+	int chunk_count = 0;
+
 	for (int h = 0; h < height/L; h++) {				
 		for (int w = 0; w < width/L; w++) {				// devide the buffer into L x L chunks
-            if (empty) {
-                n = fread(message_buffer, 1, MES_BUF_CAP, message);
-                if (n <= 0) {
-                    goto OUT;
-                } else {
-                    empty = false;
-                    ptr = 0;
-                }
-            }
-			printf("%X\n", message_buffer[ptr]);
-			unsigned char mode = (message_buffer[ptr] & byte) == byte ? 1 : 0;
-			mode <<= 1;
-			byte >>= 1;
-			mode += (message_buffer[ptr] & byte) == byte ? 1 : 0;
-			byte >>= 1;
-			if (byte == 0x00) {
-				byte = 0x80;
-                if (++ptr == MES_BUF_CAP) {
-                    empty = true;
-                }
+
+			int mode;
+			switch (chunk_count) {
+				case 0:
+					byte = 0x80;
+					break;
+				case 1:
+					byte = 0x20;
+					break;
+				case 2:
+					byte = 0x08;
+					break;
+				case 3:
+					byte = 0x02;
+					break;
+				default:
+					assert(0 && "unreachable");
 			}
+			
+
+			mode = (message_byte & byte) == byte ? 1 : 0;
+			byte >>= 1;
+			mode <<= 1;
+			mode += (message_byte & byte) == byte ? 1 : 0;
+			printf("mode: %d\n", mode);
+
 			switch (mode) {
 				case 0:
 					starti = h*L, endi = h*L+L/2;
@@ -113,8 +123,17 @@ void watermark(unsigned char *image, unsigned width, unsigned height,
 			unsigned char mask = 0x18;
 			for (int i = starti; i < endi; i++) {		// for every chunk, height
 				for (int j = startj; j < endj; j++) {	// for every chunk, width
-					image[i*(L/2)+j] ^= mask;
+					image[i*(width)+j] ^= mask;
 				}
+			}
+
+			if (++chunk_count == 4) {
+				n = fread(&message_byte, 1, 1, message);
+				if (n != 1) {
+					goto OUT;
+				}
+				chunk_count = 0;
+
 			}
 
 
