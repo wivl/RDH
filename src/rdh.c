@@ -163,3 +163,31 @@ void watermark_process(unsigned char *image, const unsigned char *key,
 	}
 }
 
+
+void recover_process(unsigned char *image, const unsigned char *key,
+		unsigned width, unsigned height, char *watermarkfile,
+		char *messagefile) {
+
+	unsigned *counts;
+	long p, z;
+
+	int starti[4] = {0, 0, height/2, height/2};
+	int endi[4] = {height/2, height/2, height, height};
+	int startj[4] = {0, width/2, 0, width/2};
+	int endj[4] = {width/2, width, width/2, width};
+	size_t cap;
+	/* chunk 0 */
+	for (int i = 0; i < 4; i++) {
+		printf("Please input the cap, p and z value of chunk %d: ", i);
+		scanf("%lu%ld%ld", &cap, &p, &z);
+		if (cap == 0) {
+			break;
+		}
+		get_message(image, width, height, starti[i], endi[i], startj[i], endj[i], p, z, messagefile, cap);
+	}
+
+	stream_encrypt(key, image, width*height);
+
+}
+
+
