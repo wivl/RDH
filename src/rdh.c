@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <math.h>
 #include "rdh.h"
 #include "png.h"
 #include "histogram_shifting.h"
@@ -139,55 +140,106 @@ void watermark(unsigned char *image, unsigned width, unsigned height,
 OUT: {}
 }
 
+void get_watermark(unsigned char *image, unsigned width, unsigned height,
+                   char *filename) {
 
-void watermark_process(unsigned char *image, const unsigned char *key,
-		unsigned width, unsigned height, char *watermarkfile,
-		char *messagefile) {
+    FILE *outputfile = fopen(filename, "wb");
 
-	unsigned *counts;
-	long p, z;
+    unsigned char mask = 0x18;
+    unsigned char byte = 0;
+    int bitcount = 0;
 
-	stream_encrypt(key, image, width*height);
-	watermark(image, width, height, watermarkfile);
-	int starti[4] = {0, 0, height/2, height/2};
-	int endi[4] = {height/2, height/2, height, height};
-	int startj[4] = {0, width/2, 0, width/2};
-	int endj[4] = {width/2, width, width/2, width};
-	size_t cap;
-	/* chunk 0 */
-	for (int i = 0; i < 4; i++) {
-		get_histogram(image, width, height, starti[i], endi[i], startj[i], endj[i], &p, &z, &counts);
-		shift(image, width, height, starti[i], endi[i], startj[i], endj[i], p, z);
-		hide_message(messagefile, image, width, height, starti[i], endi[i], startj[i], endj[i], p, z, counts, &cap);
 
-	}
+    for (int h = 0; h < height/L; h++) {
+        for (int w = 0; w < width / L; w++) {   // 每个 L x L 大小的区块
+            long starti[4] = {h*L, h*L, h*L+L/2, h*L+L/2};
+            long endi[4] = {h*L+L/2, h*L+L/2, (h+1)*L, (h+1)*L};
+            long startj[4] = {w*L, w*L+L/2, w*L, w*L+L/2};
+            long endj[4] = {w*L+L/2, (w+1)*L, w*L+L/2, (w+1)*L};
+
+            double F[4] = {0, 0, 0, 0};
+
+            for (int k = 0; k < 4; k++) {   // 每个子区块
+                for (long i = starti[k]; i < endi[k]; i++) {		// for every chunk, height
+                    for (long j = startj[k]; j < endj[k]; j++) {	// for every chunk, width
+                        image[i*(width)+j] ^= mask;
+                    }
+                }
+                // 计算波动值
+                for (long i = starti[k]+1; i < endi[k]-1; i++) {		// for every chunk, height
+                    for (long j = startj[k]+1; j < endj[k]-1; j++) {	// for every chunk, width
+                        double temp = fabs((double)image[i*(width)+j] - (double)(image[(i-1)*(width)+j] + (double)image[i*(width)+j-1] + (double)image[(i+1)*(width)+j] + image[i*(width)+j+1]) / 4.0);
+                        F[k] += temp;
+                    }
+                }
+            }
+            double alpha = F[0];
+            int index = 0;
+            for (int i = 1; i < 4; i++) {
+                if (alpha > F[i]) {
+                    index = i;
+                    alpha = F[i];
+                }
+            }
+            switch (index) {
+                case 0:             // 00
+                    byte <<= 2;
+                    break;
+                case 1:             // 01
+                    byte <<= 2;
+                    byte += 1;
+                    break;
+                case 2:             // 10
+                    byte <<= 1;
+                    byte += 1;
+                    byte <<= 1;
+                    break;
+                case 3:             // 11
+                    byte <<= 1;
+                    byte += 1;
+                    byte <<= 1;
+                    byte += 1;
+                    break;
+                default:
+                    assert(0 && "unreachable");
+            }
+            bitcount += 2;
+            if (bitcount == 8) {
+                printf("%c\n", byte);
+                fwrite(&byte, 1, 1, outputfile);
+                byte = 0;
+                bitcount = 0;
+            }
+            // recover
+            for (int k = 0; k < 4; k++) {
+                if (k == index) continue;
+                for (long i = starti[k]; i < endi[k]; i++) {		// for every chunk, height
+                    for (long j = startj[k]; j < endj[k]; j++) {	// for every chunk, width
+                        image[i*(width)+j] ^= mask;
+                    }
+                }
+            }
+        }
+    }
+
+    fclose(outputfile);
 }
 
+void watermark_process(unsigned char *image, unsigned width, unsigned height,
+                       unsigned char *key, char *watermarkfilename, char *messagefilename) {
+    stream_encrypt(key, image, width*height);
+    watermark(image, width, height, watermarkfilename);
 
-void recover_process(unsigned char *image, const unsigned char *key,
-		unsigned width, unsigned height, char *watermarkfile,
-		char *messagefile) {
-
-	unsigned *counts;
-	long p, z;
-
-	int starti[4] = {0, 0, height/2, height/2};
-	int endi[4] = {height/2, height/2, height, height};
-	int startj[4] = {0, width/2, 0, width/2};
-	int endj[4] = {width/2, width, width/2, width};
-	size_t cap;
-	/* chunk 0 */
-	for (int i = 0; i < 4; i++) {
-		printf("Please input the cap, p and z value of chunk %d: ", i);
-		scanf("%lu%ld%ld", &cap, &p, &z);
-		if (cap == 0) {
-			break;
-		}
-		get_message(image, width, height, starti[i], endi[i], startj[i], endj[i], p, z, messagefile, cap);
-	}
-
-	stream_encrypt(key, image, width*height);
+    hide_message(messagefilename, image, width, height);
 
 }
 
+void recover_process(unsigned char *image, unsigned width, unsigned height,
+                     unsigned char *key, char *watermarkfilename, char *messagefilename) {
 
+    get_message(image, width, height, messagefilename);
+    stream_encrypt(key, image, width*height);
+
+    get_watermark(image, width, height, watermarkfilename);
+
+}
