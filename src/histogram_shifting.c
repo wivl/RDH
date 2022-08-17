@@ -137,8 +137,6 @@ void hide_message(const char *filepath, unsigned char *image,
 
 void get_message(unsigned char *image, const unsigned width, const unsigned height, char *filename) {
 
-	memset(message_buff, 0, sizeof message_buff);
-
     long starti[4] = {0, 0, height/2, height/2};
     long endi[4] = {height/2, height/2, height, height};
     long startj[4] = {0, width/2, 0, width/2};

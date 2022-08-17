@@ -7,7 +7,7 @@
 
 #include "histogram_shifting.h"
 #include "png.h"
-//#include "rdh.h"
+#include "rdh.h"
 
 
 void reverse_bytes(void *buf_void, size_t buf_cap) {
@@ -52,24 +52,40 @@ int main(int argc, char **argv) {
 	decode_png(&image, &width, &height, raw_png, pngsize);
 	decode_png(&image_backup, &width, &height, raw_png, pngsize);
 
-//    unsigned char *keyimage = 0;
-//    get_key_image("key.png", &keyimage, &width, &height);
+    unsigned char *keyimage = 0;
+    get_key_image("key.png", &keyimage, &width, &height);
 
 	/* process image */
-    hide_message("message.txt", image, width, height);
-    encode_and_save("demo.png", image, width, height);
+//    watermark_process(image, width, height, keyimage, "watermark.txt", "message.txt");
+//
+//    encode_and_save("processed.png", image, width, height);
+//
+//    recover_process(image, width, height, keyimage, "watermark1.txt", "message1.txt");
+//
+//    encode_and_save("recover.png", image, width, height);
 
-    if (memcmp(image_backup, image, width*height) == 0) {
-        printf("bruh\n");
-    } else {
-        printf("The hiding proecss is working!\n");
-    }
+    watermark(image, width, height, "watermark.txt");
 
-    get_message(image, width, height, "extraction.txt");
-    encode_and_save("demo1.png", image, width, height);
+    encode_and_save("watermarked.png", image, width, height);
 
+    get_watermark(image, width, height, "get watermark.txt");
 
+    encode_and_save("recover.png", image, width, height);
 
+//    hide_message("message.txt", image, width, height);
+//    encode_and_save("demo.png", image, width, height);
+//
+//    if (memcmp(image_backup, image, width*height) == 0) {
+//        printf("bruh\n");
+//    } else {
+//        printf("The hiding proecss is working!\n");
+//    }
+//
+//    get_message(image, width, height, "extraction.txt");
+//    encode_and_save("demo1.png", image, width, height);
+//
+//
+//
     if (memcmp(image_backup, image, width*height) == 0) {
         printf("Success!\n");
     } else {
