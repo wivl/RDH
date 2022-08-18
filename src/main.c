@@ -3,105 +3,154 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdint.h>
+//#include <unistd.h>
+#include <getopt.h>
+#include <stdbool.h>
 
-
-#include "histogram_shifting.h"
 #include "png.h"
 #include "rdh.h"
 
 
-void reverse_bytes(void *buf_void, size_t buf_cap) {
-	uint8_t *buf = buf_void;
-	for (size_t i = 0; i < buf_cap / 2; i++) {
-		uint8_t t = buf[buf_cap - i - 1];
-		buf[buf_cap - i - 1] = buf[i];
-		buf[i] = t;
-	}
+void usage(char *filename) {
+    printf("usage: %s [options] [arguments]\n", filename);
+    printf("options:\n");
+    printf("-e\t\t\tencrypt and hide message and watermark to a png file\n");
+    printf("-d\t\t\tdecrypt and get message and watermark of a png file\n");
+    printf("-g\t\t\tgenerate key png file for a certain image\n");
+    printf("-h\t\t\tprint this help message\n");
+    printf("-i [image filepath]\tspecify the image to be processed\n");
+    printf("-k [key filepath]\tspecify the image to be processed\n");
+    printf("-w [watermark filepath]\t specify watermark file\n");
+    printf("-m [message filepath]\t specify message file\n");
 }
 
-void print_bytes(const char *image, unsigned width, unsigned height) {
-	for (unsigned i = 0; i < height; i++) {
-		for (unsigned j = 0; j < width; j++) {
-			printf("%u ", image[i*width+j]);
-		}
-		puts("");
-	}
-}
-
-
+extern int optind,opterr,optopt;
+extern char *optarg;
 int main(int argc, char **argv) {
 	assert(*argv != NULL);
 
-	char *program = *argv++;
+    char *program = argv[0];
 
-	if (*argv == NULL) {
-		fprintf(stderr, "Usage: %s <input.png>\n", program);
-		fprintf(stderr, "ERROR: no input file is provided\n");
+	if (argc == 1) {
+        usage(program);
 		exit(1);
 	}
 
-	char *input_filepath = *argv++;
-	printf("Inspected file is %s\n", input_filepath);
 
-	unsigned char* raw_png = 0;
-	size_t pngsize;
-	load_png(input_filepath, &raw_png, &pngsize);
+    char *input_filepath = NULL;
+    char *keyfile_path = NULL;
+    char *watermark_input = "watermark.txt";
+    char *message_input = "message.txt";
 
-	unsigned char* image = 0, *image_backup = 0;
-	unsigned width, height;
-	decode_png(&image, &width, &height, raw_png, pngsize);
-	decode_png(&image_backup, &width, &height, raw_png, pngsize);
+    int opt, flags;
+    char *optstring = "edghi:k:w:m:";
 
-    unsigned char *keyimage = 0;
-    get_key_image("key.png", &keyimage, &width, &height);
-
-	/* process image */
-    watermark_process(image, width, height, keyimage, "watermark.txt", "message.txt");
-
-    encode_and_save("processed.png", image, width, height);
-
-    recover_process(image, width, height, keyimage, "watermark1.txt", "message1.txt");
-
-    encode_and_save("recover.png", image, width, height);
-
-//    watermark(image, width, height, "watermark.txt");
-//
-//    encode_and_save("watermarked.png", image, width, height);
-//
-//    get_watermark(image, width, height, "get watermark.txt");
-//
-//    encode_and_save("recover.png", image, width, height);
-
-//    hide_message("message.txt", image, width, height);
-//    encode_and_save("demo.png", image, width, height);
-//
-//    if (memcmp(image_backup, image, width*height) == 0) {
-//        printf("bruh\n");
-//    } else {
-//        printf("The hiding proecss is working!\n");
-//    }
-//
-//    get_message(image, width, height, "extraction.txt");
-//    encode_and_save("demo1.png", image, width, height);
-//
-//
-//
-    if (memcmp(image_backup, image, width*height) == 0) {
-        printf("Success!\n");
-    } else {
-        printf("bruh\n");
-    }
-    int count = 0;
-    for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
-            if (image[i*width+j] != image_backup[i*width+j]) {
-                printf("Difference detected: [%d, %d], %u, %u\n", i, j, image[i*width+j], image_backup[i*width+j]);
-                count += 1;
-            }
+    while ((opt = getopt(argc, argv, optstring)) != -1) {
+        switch (opt) {
+            case 'e':
+                flags = 1;
+                break;
+            case 'd':
+                flags = 2;
+                break;
+            case 'g':
+                flags = 3;
+                break;
+            case 'i':
+                input_filepath = optarg;
+                break;
+            case 'k':
+                keyfile_path = optarg;
+                break;
+            case 'w':
+                watermark_input = optarg;
+                break;
+            case 'm':
+                message_input = optarg;
+                break;
+            case 'h':
+                usage(program);
+                exit(0);
+            case '?':
+                fprintf(stderr, "Unknown flag: -%c\n", optopt);
+                usage(program);
+                exit(1);
+            default:
+                break;
         }
     }
-    printf("\nTotal differences count: %d\n", count);
-	/* process image end */
+    bool error = false;
+
+    unsigned char* raw_png = 0;
+    size_t pngsize;
+    unsigned char* image = 0;
+    unsigned width, height;
+    unsigned char *keyimage = 0;
+
+
+    switch (flags) {
+        case 1:
+            if (input_filepath == NULL) {
+                fprintf(stderr, "ERROR: Missing image file path.\n");
+                error = true;
+            }
+            if (keyfile_path == NULL) {
+                fprintf(stderr, "ERROR: Missing key image file path.\n");
+                error = true;
+            }
+            if (error) {
+                fprintf(stderr, "The process stopped due to the error(s) above.\n");
+                exit(1);
+            }
+            load_png(input_filepath, &raw_png, &pngsize);
+            decode_png(&image, &width, &height, raw_png, pngsize);
+            get_key_image(keyfile_path, &keyimage, &width, &height);
+            watermark_process(image, width, height, keyimage, watermark_input, message_input);
+            encode_and_save("processed.png", image, width, height);
+            printf("The processed image is saved as 'processed.png'.\n");
+            printf("Process done!\n");
+            break;
+        case 2:
+            if (input_filepath == NULL) {
+                fprintf(stderr, "ERROR: Missing image file path.\n");
+                error = true;
+            }
+            if (keyfile_path == NULL) {
+                fprintf(stderr, "ERROR: Missing key image file path.\n");
+                error = true;
+            }
+            if (error) {
+                fprintf(stderr, "The process stopped due to the error(s) above.\n");
+                exit(1);
+            }
+            load_png(input_filepath, &raw_png, &pngsize);
+            decode_png(&image, &width, &height, raw_png, pngsize);
+            get_key_image(keyfile_path, &keyimage, &width, &height);
+            recover_process(image, width, height, keyimage, watermark_input, message_input);
+            encode_and_save("recover.png", image, width, height);
+            printf("The recovered image is saved as 'recover.png'.\n");
+            printf("Process done!\n");
+            break;
+        case 3:
+            if (input_filepath == NULL) {
+                fprintf(stderr, "ERROR: Missing image file path.\n");
+                error = true;
+            }
+            if (error) {
+                fprintf(stderr, "The process stopped due to the error(s) above.\n");
+                exit(1);
+            }
+            load_png(input_filepath, &raw_png, &pngsize);
+            decode_png(&image, &width, &height, raw_png, pngsize);
+            generate_key_image(width, height);
+            printf("The key png file is saved as 'key.png'\n");
+            printf("Process done!\n");
+            break;
+        default:
+            assert(0 && "unreachable");
+    }
+
+
 
 
 	free(raw_png);
