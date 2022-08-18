@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <stdbool.h>
 
 
 void get_histogram(const unsigned char *image, unsigned width, unsigned height,
@@ -61,9 +60,6 @@ void shift(unsigned char *image, const unsigned width, const unsigned height,
 		}
 	}
 }
-
-#define MESS_BUF_CAP 256
-unsigned char message_buff[MESS_BUF_CAP];
 
 void hide_message(const char *filepath, unsigned char *image,
 		const unsigned width, const unsigned height) {
@@ -207,7 +203,6 @@ void get_message(unsigned char *image, const unsigned width, const unsigned heig
                 }
             }
         }
-        AFTER_RECOVER: {}
     }
 
 
