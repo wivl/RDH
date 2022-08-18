@@ -9,7 +9,7 @@
 #include "histogram_shifting.h"
 
 /*
-   Generate key png file that stream encrypt process needed.
+   Generate key png file that stream encrypts process needed.
    width, height: The width and height of the image to be encrypted.
    The key png file is saved to current directory.
    */
@@ -66,10 +66,6 @@ void watermark(unsigned char *image, unsigned width, unsigned height,
 	}
 
 	unsigned char byte = 0x80;
-	int ptr = 0;
-	int bitcount = 0;
-	bool quit = false;
-	bool empty = true;
 	int starti, startj, endi, endj;
 	int chunk_count = 0;
     size_t byte_cap = 0;
@@ -122,7 +118,6 @@ void watermark(unsigned char *image, unsigned width, unsigned height,
 				default:
 					assert(0 && "unreachable");
 			}
-			// printf("start: (%d, %d), end: (%d, %d)\n", starti, startj, endi, endj);
 			unsigned char mask = 0x18;
 			for (int i = starti; i < endi; i++) {		// for every chunk, height
 				for (int j = startj; j < endj; j++) {	// for every chunk, width
@@ -190,36 +185,30 @@ void get_watermark(unsigned char *image, unsigned width, unsigned height,
                     alpha = F[i];
                 }
             }
-            printf("Selected chunk is L%d, ", index);
             switch (index) {
                 case 0:             // 00
                     byte <<= 2;
-                    printf("and the message hidden is 00\n");
                     break;
                 case 1:             // 01
                     byte <<= 2;
                     byte += 1;
-                    printf("and the message hidden is 01\n");
                     break;
                 case 2:             // 10
                     byte <<= 1;
                     byte += 1;
                     byte <<= 1;
-                    printf("and the message hidden is 10\n");
                     break;
                 case 3:             // 11
                     byte <<= 1;
                     byte += 1;
                     byte <<= 1;
                     byte += 1;
-                    printf("and the message hidden is 11\n");
                     break;
                 default:
                     assert(0 && "unreachable");
             }
             bitcount += 2;
             if (bitcount == 8) {
-                printf("%c\n", byte);
                 fwrite(&byte, 1, 1, outputfile);
                 byte = 0;
                 bitcount = 0;
