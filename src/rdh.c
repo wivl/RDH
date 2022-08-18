@@ -72,6 +72,8 @@ void watermark(unsigned char *image, unsigned width, unsigned height,
 	bool empty = true;
 	int starti, startj, endi, endj;
 	int chunk_count = 0;
+    size_t byte_cap = 0;
+
 
 	for (int h = 0; h < height/L; h++) {				
 		for (int w = 0; w < width/L; w++) {				// devide the buffer into L x L chunks
@@ -129,6 +131,7 @@ void watermark(unsigned char *image, unsigned width, unsigned height,
 			}
 
 			if (++chunk_count == 4) {
+                byte_cap += 1;
 				n = fread(&message_byte, 1, 1, message);
 				if (n != 1) {
 					goto OUT;
@@ -137,7 +140,9 @@ void watermark(unsigned char *image, unsigned width, unsigned height,
 			}
 		}
 	}
-OUT: {}
+OUT: {
+        printf("The watermark capacity is %lu byte(s)\n", byte_cap);
+    }
 }
 
 void get_watermark(unsigned char *image, unsigned width, unsigned height,
@@ -148,6 +153,10 @@ void get_watermark(unsigned char *image, unsigned width, unsigned height,
     unsigned char mask = 0x18;
     unsigned char byte = 0;
     int bitcount = 0;
+    size_t byte_count = 0;
+    size_t byte_cap;
+    printf("Please input watermark capacity (in byte): ");
+    scanf("%lu", &byte_cap);
 
 
     for (int h = 0; h < height/L; h++) {
@@ -181,24 +190,29 @@ void get_watermark(unsigned char *image, unsigned width, unsigned height,
                     alpha = F[i];
                 }
             }
+            printf("Selected chunk is L%d, ", index);
             switch (index) {
                 case 0:             // 00
                     byte <<= 2;
+                    printf("and the message hidden is 00\n");
                     break;
                 case 1:             // 01
                     byte <<= 2;
                     byte += 1;
+                    printf("and the message hidden is 01\n");
                     break;
                 case 2:             // 10
                     byte <<= 1;
                     byte += 1;
                     byte <<= 1;
+                    printf("and the message hidden is 10\n");
                     break;
                 case 3:             // 11
                     byte <<= 1;
                     byte += 1;
                     byte <<= 1;
                     byte += 1;
+                    printf("and the message hidden is 11\n");
                     break;
                 default:
                     assert(0 && "unreachable");
@@ -209,6 +223,7 @@ void get_watermark(unsigned char *image, unsigned width, unsigned height,
                 fwrite(&byte, 1, 1, outputfile);
                 byte = 0;
                 bitcount = 0;
+                byte_count += 1;
             }
             // recover
             for (int k = 0; k < 4; k++) {
@@ -219,26 +234,34 @@ void get_watermark(unsigned char *image, unsigned width, unsigned height,
                     }
                 }
             }
+            if (byte_count >= byte_cap) {
+                goto OUT;
+            }
         }
     }
+    OUT: {}
 
     fclose(outputfile);
 }
 
 void watermark_process(unsigned char *image, unsigned width, unsigned height,
                        unsigned char *key, char *watermarkfilename, char *messagefilename) {
-    stream_encrypt(key, image, width*height);
+    // stream encrypt, watermark, hide message
+
     watermark(image, width, height, watermarkfilename);
 
     hide_message(messagefilename, image, width, height);
+    stream_encrypt(key, image, width*height);
 
 }
 
 void recover_process(unsigned char *image, unsigned width, unsigned height,
                      unsigned char *key, char *watermarkfilename, char *messagefilename) {
 
-    get_message(image, width, height, messagefilename);
+    // get message, stream encrypt, get watermark
+
     stream_encrypt(key, image, width*height);
+    get_message(image, width, height, messagefilename);
 
     get_watermark(image, width, height, watermarkfilename);
 

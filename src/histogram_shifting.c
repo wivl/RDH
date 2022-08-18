@@ -145,13 +145,14 @@ void get_message(unsigned char *image, const unsigned width, const unsigned heig
 	FILE *output = fopen(filename, "wb");
     unsigned char byte = 0;
     int bitcount = 0;
-    size_t n = 0;   // 统计已获得的字节数
     unsigned long cap;        // 统计当前部分保存的比特数
     long p, z;
 
-    for (int k = 0; k < 4; k++) {
+    for (int k = 0; k < 4; k++) {   // 4 个部分
         printf("Please input the value of byte cap, p, z: ");
         scanf("%lu%ld%ld", &cap, &p, &z);
+        size_t n = 0;   // 统计已获得的比特数
+
         assert(p != z);
         if (cap == 0) {        // 如果此部分隐藏的信息 bit 数为 0
             goto RECOVER;
@@ -175,10 +176,14 @@ void get_message(unsigned char *image, const unsigned width, const unsigned heig
                 } else {
                     continue;
                 }
+                n += 1;
                 if (++bitcount == 8) {
                     fwrite(&byte, 1, 1, output);
                     byte = 0;
                     bitcount = 0;
+                    if (n >= cap) {
+                        goto RECOVER;
+                    }
                 }
 
             }
@@ -202,6 +207,7 @@ void get_message(unsigned char *image, const unsigned width, const unsigned heig
                 }
             }
         }
+        AFTER_RECOVER: {}
     }
 
 

@@ -56,21 +56,21 @@ int main(int argc, char **argv) {
     get_key_image("key.png", &keyimage, &width, &height);
 
 	/* process image */
-//    watermark_process(image, width, height, keyimage, "watermark.txt", "message.txt");
-//
-//    encode_and_save("processed.png", image, width, height);
-//
-//    recover_process(image, width, height, keyimage, "watermark1.txt", "message1.txt");
-//
-//    encode_and_save("recover.png", image, width, height);
+    watermark_process(image, width, height, keyimage, "watermark.txt", "message.txt");
 
-    watermark(image, width, height, "watermark.txt");
+    encode_and_save("processed.png", image, width, height);
 
-    encode_and_save("watermarked.png", image, width, height);
-
-    get_watermark(image, width, height, "get watermark.txt");
+    recover_process(image, width, height, keyimage, "watermark1.txt", "message1.txt");
 
     encode_and_save("recover.png", image, width, height);
+
+//    watermark(image, width, height, "watermark.txt");
+//
+//    encode_and_save("watermarked.png", image, width, height);
+//
+//    get_watermark(image, width, height, "get watermark.txt");
+//
+//    encode_and_save("recover.png", image, width, height);
 
 //    hide_message("message.txt", image, width, height);
 //    encode_and_save("demo.png", image, width, height);
@@ -91,6 +91,16 @@ int main(int argc, char **argv) {
     } else {
         printf("bruh\n");
     }
+    int count = 0;
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            if (image[i*width+j] != image_backup[i*width+j]) {
+                printf("Difference detected: [%d, %d], %u, %u\n", i, j, image[i*width+j], image_backup[i*width+j]);
+                count += 1;
+            }
+        }
+    }
+    printf("\nTotal differences count: %d\n", count);
 	/* process image end */
 
 
